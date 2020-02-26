@@ -1,4 +1,4 @@
-﻿
+
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -9,6 +9,9 @@
 #include <cmath>
 #include "Eigen/Eigen/Dense"
 #include "Eigen/Eigen/Eigenvalues"
+#include "Eigen/unsupported/Eigen/MatrixFunctions"
+
+
 
 void generateCovBand(int windowSize, std::string corrMatrix, std::string output);
 void generateCovR(std::string X_rightdim, std::string Kpath, std::string VCpath, std::string outputPath);
@@ -30,7 +33,8 @@ int main(int argc, char* argv[])
     //}
     //return 0;
 
-    generateCovR("X_rightdim.txt", "K.txt", "VC.txt", "");
+    generateCovR("X_rightdim.txt", "K.txt", "VC.txt", "test.txt");
+
     return 0;
 }
 
@@ -45,7 +49,7 @@ void generateCovR(std::string X_rightdim, std::string Kpath, std::string VCpath,
     std::stringstream stream;
 
     Eigen::MatrixXd VC_matrix;
-
+    
 
     std::vector<std::string> VC_col1;
     std::vector<std::string> VC_col2;
@@ -61,16 +65,16 @@ void generateCovR(std::string X_rightdim, std::string Kpath, std::string VCpath,
     Eigen::MatrixXd U_matrix;
     Eigen::MatrixXd cor_matrix;
 
-    Eigen::MatrixXd test = Eigen::MatrixXd(3, 3);
+    Eigen::MatrixXd test = Eigen::MatrixXd(2, 2);
 
     /*for (int i = 0; i < 3; i++) {
        for (int j = 0; j < 3; j++) {
           test(j, i) = i;
        }
     }*/
-    test(0, 0) = 1; test(0, 1) = 4; test(0, 2) = 7; 
-    test(1, 0) = 2; test(1, 1) = 5; test(1, 2) = 8; 
-    test(2, 0) = 3; test(2, 1) = 6; test(2, 2) = 9; 
+    //test(0, 0) = 1; test(0, 1) = 3; test(0, 2) = 7; 
+    //test(1, 0) = 2; test(1, 1) = 4; test(1, 2) = 8; 
+   // test(2, 0) = 3; test(2, 1) = 6; test(2, 2) = 9; 
     //Eigen::EigenSolver<Eigen::MatrixXd> tt(test);
     //std::cout << test << std::endl;
     //std::cout << tt.pseudoEigenvectors() << std::endl << std::endl;
@@ -86,7 +90,7 @@ void generateCovR(std::string X_rightdim, std::string Kpath, std::string VCpath,
     //std::cout << std::endl;
     //std::cout << test * tt.pseudoEigenvectors().col(2) << std::endl << std::endl;
     //std::cout << tt.pseudoEigenvalueMatrix()(2, 2) * tt.pseudoEigenvectors().col(2) << std::endl;
-
+    //std::cout << test * test << std::endl;
     //exit(1);
 
     int snpNum = 0; int indiNum = 0; //X_rightdim's row, col number
@@ -161,37 +165,61 @@ void generateCovR(std::string X_rightdim, std::string Kpath, std::string VCpath,
             //std::cout.precision(16); // check 
             //std::cout << K_matrix(i,j) << " ";
         }
-        stream.clear();
-      //std::cout << "" << std::endl;
+        //stream.clear();
+        //std::cout << "" << std::endl;
     } //then K_matrix -> sigmaM matrix
     //exit(1);
     Eigen::EigenSolver<Eigen::MatrixXd> cal_eigen(K_matrix);
     K_matrix_eigen_vectors = cal_eigen.pseudoEigenvectors();
     K_matrix_eigen_values = cal_eigen.pseudoEigenvalueMatrix();
     
-    for (int i = 0; i < k_size; i++) {
-            if (K_matrix_eigen_values(i, i) < 0.0000000000001) { // 1e-1
-                K_matrix_eigen_values(i, i) = 0.0000000000001;
-            }
-            K_matrix_eigen_values(i, i) = 1/sqrt(K_matrix_eigen_values(i, i));
-            //std::cout << i + 1 << ": " << K_matrix_eigen_values(i, i) << std::endl;
-    }
-    U_matrix = K_matrix_eigen_vectors * K_matrix_eigen_values;
-    
-    //std::cout << K_matrix_eigen_vectors << std::endl << std::endl;
-    K_matrix_eigen_vectors.transposeInPlace();
-    U_matrix = U_matrix * K_matrix_eigen_vectors;
-    U_matrix.transposeInPlace();
-    
-    U_matrix = U_matrix * X_right_matrix;
-    cal_standard_deviation(stand_devi, U_matrix);
-        std::cout << U_matrix.coeff(1) << std::endl;
-    
+    K_matrix = K_matrix.sqrt();
+    //for (int i = 0; i < K_matrix_eigen_vectors.rows(); i++) {
+    //    for (int j = 0; j < K_matrix_eigen_vectors.cols(); j++) {
+    //        if (j + 1 == K_matrix_eigen_vectors.cols()) {
+    //            out << K_matrix_eigen_vectors(i, j);
+    //        }
+    //        else {
+    //            out << K_matrix_eigen_vectors(i, j) << " ";
+    //        }
+    //    }out << "\n";
+    //}
 
-    /*cal_cor(stand_devi, U_matrix, cor_matrix);
+    //for (int i = 0; i < k_size; i++) {
+    //        if (K_matrix_eigen_values(i, i) < 0.0000000000001) { // 1e-1
+    //            K_matrix_eigen_values(i, i) = 0.0000000000001;
+    //        }
+    //        K_matrix_eigen_values(i, i) = 1/sqrt(K_matrix_eigen_values(i, i));
+    //        //std::cout << i + 1 << ": " << K_matrix_eigen_values(i, i) << std::endl;
+    //}
+    //U_matrix = K_matrix_eigen_vectors * K_matrix_eigen_values;
+    //
+    ////std::cout << K_matrix_eigen_vectors << std::endl << std::endl;
+    //K_matrix_eigen_vectors.transposeInPlace();
+    //U_matrix = U_matrix * K_matrix_eigen_vectors;
+    //U_matrix.transposeInPlace();
+    //std::cout << U_matrix << std::endl;
+    K_matrix.transposeInPlace();
+    K_matrix = K_matrix * X_right_matrix;
+    cal_standard_deviation(stand_devi, K_matrix);
+    cal_cor(stand_devi, K_matrix, cor_matrix);
+    //U_matrix = U_matrix * X_right_matrix;
+    //cal_standard_deviation(stand_devi, U_matrix);
+    //std::cout << U_matrix << std::endl;
+    //for (int i = 0; i < U_matrix.rows(); i++) {
+    //    for (int j = 0; j < U_matrix.cols(); j++) {
+    //        if (j + 1 == U_matrix.cols()) {
+    //            out << U_matrix(i, j);
+    //        }
+    //        else {
+    //            out << U_matrix(i, j) << " ";
+    //        }
+    //    }out << "\n";
+    //}
+    //cal_cor(stand_devi, U_matrix, cor_matrix);
     
-    std::cout.precision(16);
-    std::cout << cor_matrix << std::endl;*/
+    out.precision(16);
+    out << cor_matrix << std::endl;
 
     stand_devi.~vector();
     
