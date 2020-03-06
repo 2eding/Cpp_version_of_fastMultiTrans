@@ -14,26 +14,81 @@
 
 using namespace Eigen;
 
+int count_matrix_col(std::ifstream& matrix);
+int count_matrix_row(std::ifstream& matrix);
+
 //estimateVarComp input kinship, pheno, SNP, outputPath
-int main(int argc, char* argv[]) {
+int main() {
     //MatrixXd kin_mat = load_file<MatrixXd>(argv[1]); //Kinship matrix
     //MatrixXd pheno_mat = load_file<MatrixXd>(argv[2]); //Phenotype matrix
     //MatrixXd snp_mat = load_file<MatrixXd>(argv[3]); //SNP matrix
     //    
-    std::string kin = argv[1];
+    /*std::string kin = ;
     std::string pheno = argv[2];
-    std::string snp = argv[3];
+    std::string snp = argv[3];*/
 
-    std::ifstream kinin(kin.c_str());
-    std::ifstream phenoin(pheno.c_str());
-    std::ifstream snpin(snp.c_str());
-    std::ofstream out(argv[4]);
+    std::ifstream kinin("K.txt");
+    std::ifstream phenoin("Y.txt");
+    std::ifstream snpin("X.txt");
+    std::ofstream out("VC2.txt");
 
-    MatrixXd kin_mat = (MatrixXd)kinin; //Kinship matrix
-    MatrixXd pheno_mat = (MatrixXd)phenoin; //Phenotype matrix
-    MatrixXd snp_mat = (MatrixXd)snpin; //SNP matrix
+    std::string read_buffer; //file preprocessing variable
+    std::string token;
+    std::stringstream stream;
 
-    if (argc == 5) {
+
+    int kin_mat_row(0), kin_mat_col(0);
+    int phe_mat_row(0), phe_mat_col(0);
+    int snp_mat_row(0), snp_mat_col(0);
+    
+    kin_mat_row = count_matrix_row(kinin); kin_mat_col = count_matrix_col(kinin);
+    phe_mat_row = count_matrix_row(phenoin); phe_mat_col = count_matrix_col(phenoin);
+    snp_mat_row = count_matrix_row(snpin); snp_mat_col = count_matrix_col(snpin);
+
+    MatrixXd kin_mat = MatrixXd(kin_mat_row, kin_mat_col); //Kinship matrix
+    MatrixXd pheno_mat = MatrixXd(phe_mat_row, phe_mat_col); //Phenotype matrix
+    MatrixXd snp_mat = MatrixXd(snp_mat_row, snp_mat_col); //SNP matrix
+
+    for (int i = 0; i < kin_mat_row; i++) { //row
+        std::getline(kinin, read_buffer);
+        stream.str(read_buffer);
+        for (int j = 0; j < kin_mat_col; j++) { //col
+            stream >> token;
+            kin_mat(i, j) = std::stold(token);
+
+            //std::cout.precision(16); 
+            //std::cout << X_right_matrix(i,j) << " ";
+        }
+        stream.clear();
+        //std::cout << "" << std::endl;
+    }
+    for (int i = 0; i < phe_mat_row; i++) { //row
+        std::getline(phenoin, read_buffer);
+        stream.str(read_buffer);
+        for (int j = 0; j < phe_mat_col; j++) { //col
+            stream >> token;
+            pheno_mat(i, j) = std::stold(token);
+            //std::cout.precision(16); 
+            //std::cout << X_right_matrix(i,j) << " ";
+        }
+        stream.clear();
+        //std::cout << "" << std::endl;
+    }
+    for (int i = 0; i < snp_mat_row; i++) { //row
+        std::getline(snpin, read_buffer);
+        stream.str(read_buffer);
+        for (int j = 0; j < snp_mat_col; j++) { //col
+            stream >> token;
+            snp_mat(i, j) = std::stold(token);
+            //std::cout.precision(16); 
+            //std::cout << X_right_matrix(i,j) << " ";
+        }
+        stream.clear();
+        //std::cout << "" << std::endl;
+    }
+ 
+
+    if (true) {
         MatrixXd oriKin = kin_mat;
         struct eigenrot e;
         struct lmm_fit vc;
@@ -49,15 +104,14 @@ int main(int argc, char* argv[]) {
             out << vc.hsq * vc.sigmasq << "\t" << (1 - vc.hsq) * vc.sigmasq << "\n";
         }
         out << "\n";
-        kinin.close();
-        phenoin.close();
-        snpin.close();
-        out.close();
     }
     else {
         std::cout << "Usage: estimateVarComp [SNP] [Pheno] [kinship] [outputPath]" << std::endl;
     }
-
+    kinin.close();
+    phenoin.close();
+    snpin.close();
+    out.close();
     return 0;
 }
 
@@ -398,4 +452,33 @@ double qtl2_Brent_fmin(double ax, double bx, double (*f)(double, void*),
     /* end of main loop */
 
     return x;
+}
+
+
+
+int count_matrix_col(std::ifstream& matrix) {
+    std::string token;
+    std::stringstream stream; int count = 0;
+    std::string read_line;
+
+    std::getline(matrix, read_line);
+    stream.str(read_line);
+    while (stream >> token) {
+        count++;
+    }
+    matrix.clear(); //coursor reset
+    matrix.seekg(0, std::ios_base::beg);
+    return count;
+}
+
+int count_matrix_row(std::ifstream& matrix) {
+    std::string read_line; int count = 0;
+
+    while (matrix.peek() != EOF) {
+        std::getline(matrix, read_line);
+        count++;
+    }
+    matrix.clear();//coursor reset
+    matrix.seekg(0, std::ios_base::beg);
+    return count;
 }
