@@ -8,25 +8,11 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "estimateVarComp.h"
-#include <vector>
-#include <list>
-#define MAXBUFSIZE  ((int) 1e6)
 
 using namespace Eigen;
 
-int count_matrix_col(std::ifstream& matrix);
-int count_matrix_row(std::ifstream& matrix);
-
 //estimateVarComp input kinship, pheno, SNP, outputPath
 int main() {
-    //MatrixXd kin_mat = load_file<MatrixXd>(argv[1]); //Kinship matrix
-    //MatrixXd pheno_mat = load_file<MatrixXd>(argv[2]); //Phenotype matrix
-    //MatrixXd snp_mat = load_file<MatrixXd>(argv[3]); //SNP matrix
-    //    
-    /*std::string kin = ;
-    std::string pheno = argv[2];
-    std::string snp = argv[3];*/
-
     std::ifstream kinin("K.txt");
     std::ifstream phenoin("Y.txt");
     std::ifstream snpin("X.txt");
@@ -36,11 +22,10 @@ int main() {
     std::string token;
     std::stringstream stream;
 
-
     int kin_mat_row(0), kin_mat_col(0);
     int phe_mat_row(0), phe_mat_col(0);
     int snp_mat_row(0), snp_mat_col(0);
-    
+   
     kin_mat_row = count_matrix_row(kinin); kin_mat_col = count_matrix_col(kinin);
     phe_mat_row = count_matrix_row(phenoin); phe_mat_col = count_matrix_col(phenoin);
     snp_mat_row = count_matrix_row(snpin); snp_mat_col = count_matrix_col(snpin);
@@ -55,12 +40,8 @@ int main() {
         for (int j = 0; j < kin_mat_col; j++) { //col
             stream >> token;
             kin_mat(i, j) = std::stold(token);
-
-            //std::cout.precision(16); 
-            //std::cout << X_right_matrix(i,j) << " ";
         }
         stream.clear();
-        //std::cout << "" << std::endl;
     }
     for (int i = 0; i < phe_mat_row; i++) { //row
         std::getline(phenoin, read_buffer);
@@ -68,11 +49,8 @@ int main() {
         for (int j = 0; j < phe_mat_col; j++) { //col
             stream >> token;
             pheno_mat(i, j) = std::stold(token);
-            //std::cout.precision(16); 
-            //std::cout << X_right_matrix(i,j) << " ";
         }
         stream.clear();
-        //std::cout << "" << std::endl;
     }
     for (int i = 0; i < snp_mat_row; i++) { //row
         std::getline(snpin, read_buffer);
@@ -80,27 +58,25 @@ int main() {
         for (int j = 0; j < snp_mat_col; j++) { //col
             stream >> token;
             snp_mat(i, j) = std::stold(token);
-            //std::cout.precision(16); 
-            //std::cout << X_right_matrix(i,j) << " ";
         }
         stream.clear();
-        //std::cout << "" << std::endl;
     }
- 
 
     if (true) {
         MatrixXd oriKin = kin_mat;
         struct eigenrot e;
         struct lmm_fit vc;
-        for (int i = 1; i <= pheno_mat.rows(); i++) {
+        for (int i = 0; i < phe_mat_row; i++) {
             kin_mat = oriKin;
-            std::cout << i << std::endl;
-            
+
+            std::cout << i+1 << std::endl;
+
             e = eigen_rotation(kin_mat, pheno_mat.row(i), snp_mat);
             vc = fitLMM(e.Kva, e.y, e.X, true, true, NULL, 1e-6);
 
             // vc.hsq * vc.sigmasq = Vg
             // (1 - vc.hsq) * vc.sigmasq = Ve
+            std::cout << "Vg = " << vc.hsq * vc.sigmasq << "\t" << "Ve = " << (1 - vc.hsq) * vc.sigmasq << std::endl;
             out << vc.hsq * vc.sigmasq << "\t" << (1 - vc.hsq) * vc.sigmasq << "\n";
         }
         out << "\n";
@@ -115,31 +91,11 @@ int main() {
     return 0;
 }
 
-// read file to Eigen matrix
-template<typename M>
-M load_file(const std::string& path) {
-    std::ifstream indata;
-    indata.open(path);
-    std::string line;
-    std::vector<double> values;
-    int rows = 0;
-    while (std::getline(indata, line)) {
-        std::stringstream lineStream(line);
-        std::string cell;
-        while (std::getline(lineStream, cell, ' ')) {
-            values.push_back(std::stod(cell));
-        }
-        ++rows;
-    }
-    return Map<const Matrix<typename M::Scalar, M::RowsAtCompileTime, M::ColsAtCompileTime, RowMajor>>(values.data(), rows, values.size() / rows);
-}
-
 // calc X'X
 MatrixXd calc_xpx(const MatrixXd& X)
 {
     const int n = X.cols();
-
-    return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(X.transpose());
+    return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(X.transpose().eval());
 }
 
 // eigen decomposition
@@ -147,7 +103,7 @@ MatrixXd calc_xpx(const MatrixXd& X)
 std::pair<VectorXd, MatrixXd> eigen_decomp(const MatrixXd& A)
 {
     const SelfAdjointEigenSolver<MatrixXd> VLV(A);
-    return std::make_pair(VLV.eigenvalues(), VLV.eigenvectors().transpose());
+    return std::make_pair(VLV.eigenvalues(), VLV.eigenvectors().transpose().eval());
 }
 
 // eigen + rotation
@@ -155,23 +111,17 @@ std::pair<VectorXd, MatrixXd> eigen_decomp(const MatrixXd& A)
 // and rotate phenotype and covariate matrices by transpose of eigenvectors
 struct eigenrot eigen_rotation(const MatrixXd& K, const MatrixXd& y, const MatrixXd& X) {
     const std::pair<VectorXd, MatrixXd> e = eigen_decomp(K);
-    const MatrixXd yrot = e.second * y;
-    const MatrixXd Xrot = e.second * X;
-
+    // e.first's matrix size: # of individual x 1
+    // e.second's matrix size: # of individual x # of individual
+    const MatrixXd yrot = e.second * y.transpose().eval(); // y: 1 x individual
+    const MatrixXd XX = MatrixXd(K.rows(), 1);
+    const MatrixXd Xrot = e.second * XX; // X: snp x individual
+    
     struct eigenrot result;
     result.Kva = e.first;
     result.Kve = e.second;
     result.y = yrot;
     result.X = Xrot;
-    
-    const std::pair<VectorXd, MatrixXd> ee = eigen_decomp(K);
-    result.Kva = ee.first;
-    MatrixXd Kve_t = ee.second;
-    const MatrixXd yy = Kve_t * y;
-    const MatrixXd XX = Kve_t * X;
-    result.Kve = Kve_t;
-    result.y = yy;
-    result.X = XX;
 
     return result;
 }
@@ -214,7 +164,7 @@ struct lmm_fit getMLsoln(const double hsq, const VectorXd& Kva, const VectorXd& 
         S[i] = 1.0 / (hsq * Kva[i] + 1.0 - hsq);
 
     // calculate a bunch of matrices
-    const MatrixXd XSt = X.transpose() * S.asDiagonal();
+    const MatrixXd XSt = X.transpose().eval() * S.asDiagonal();
     MatrixXd ySt(1, n);
     for (int i = 0; i < n; i++) ySt(0, i) = y[i] * S[i];
     const MatrixXd XSX = XSt * X;
@@ -229,10 +179,10 @@ struct lmm_fit getMLsoln(const double hsq, const VectorXd& Kva, const VectorXd& 
         inv_evals[i] = 1.0 / e.first[i];
         if (reml) logdetXSX += log(e.first[i]);
     }
-    const MatrixXd beta = e.second.transpose() * inv_evals.asDiagonal() * e.second * XSy;
+    const MatrixXd beta = e.second.transpose().eval() * inv_evals.asDiagonal() * e.second * XSy;
 
     // residual sum of squares
-    const MatrixXd rss = ySy - XSy.transpose() * beta;
+    const MatrixXd rss = ySy - XSy.transpose().eval() * beta;
 
     // return value
     result.rss = rss(0, 0);
@@ -304,8 +254,8 @@ double negLL(const double x, struct calcLL_args* args)
 // check_boundary = if true, explicity check 0.0 and 1.0 boundaries
 // logdetXpX = log det X'X; if NA, it's calculated
 // tol   = tolerance for convergence
-struct lmm_fit fitLMM(const VectorXd& Kva, const VectorXd& y, const MatrixXd& X, const bool reml = true, const bool check_boundary = true, 
-                      const double logdetXpX = NULL, const double tol = 1e-4) {
+struct lmm_fit fitLMM(const VectorXd& Kva, const VectorXd& y, const MatrixXd& X, const bool reml = true, const bool check_boundary = true,
+    const double logdetXpX = NULL, const double tol = 1e-4) {
     struct lmm_fit result;
 
     // calculate log det XpX, if necessary
@@ -453,8 +403,6 @@ double qtl2_Brent_fmin(double ax, double bx, double (*f)(double, void*),
 
     return x;
 }
-
-
 
 int count_matrix_col(std::ifstream& matrix) {
     std::string token;

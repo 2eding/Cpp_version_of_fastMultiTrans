@@ -1,5 +1,4 @@
 #pragma once
-// linear mixed model via RcppEigen
 #ifndef ESTIMATEVARCOMP_H
 #define ESTIMATEVARCOMP_H
 #include <Eigen/Dense>
@@ -31,8 +30,8 @@ struct eigenrot {
     MatrixXd X;
 };
 
-// read file to Eigen matrix
-template<typename M> M load_file(const std::string& path);
+int count_matrix_col(std::ifstream& matrix);
+int count_matrix_row(std::ifstream& matrix);
 
 // calc X'X
 MatrixXd calc_XpX(const MatrixXd& X);
