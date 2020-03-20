@@ -3,13 +3,25 @@
 #define ESTIMATEVARCOMP_H
 #include "Eigen/Dense"
 #include "Eigen/Core"
+#include "Eigen/unsupported/Eigen/MatrixFunctions"
+#include <iostream>
+#include <fstream>
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include <vector>
 
 using namespace Eigen;
 
 int count_matrix_col(std::ifstream& matrix);
 int count_matrix_row(std::ifstream& matrix);
+double cal_median(std::vector<double> col);
+void cal_standard_deviation(std::vector<double>& ret, Eigen::MatrixXd& mat);
+void cal_cor(std::vector<double>& ret, Eigen::MatrixXd& mat, Eigen::MatrixXd& colmat);
+
+Eigen::MatrixXd cor_mat(Eigen::MatrixXd kinship, Eigen::MatrixXd snp, std::vector<double> vc_1, std::vector<double> vc_2);
 Eigen::MatrixXd read_mat(std::ifstream& input_file, int row, int col);
 Eigen::MatrixXd estimateKinship(Eigen::MatrixXd snp);
+void estimateVarComp(Eigen::MatrixXd kinship, Eigen::MatrixXd snp, Eigen::MatrixXd phenotype, std::vector<double>& vc_1, std::vector<double>& vc_2);
 struct lmm_fit {
     double hsq;
     VectorXd beta;
