@@ -45,9 +45,6 @@ std::pair<VectorXd, MatrixXd> eigen_decomp(const MatrixXd& A);
 // and rotate phenotype and covariate matrices by transpose of eigenvectors
 struct eigenrot eigen_rotation(const MatrixXd& K, const MatrixXd& y, const MatrixXd& X);
 
-// calculate log det X'X
-double calc_logdetXpX(const MatrixXd& X);
-
 // getMLsoln
 // for fixed value of hsq, calculate MLEs of beta and sigmasq
 // sigmasq = total variance = sig^2_g + sig^2_e
