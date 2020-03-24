@@ -126,22 +126,6 @@ struct eigenrot eigen_rotation(const MatrixXd& K, const MatrixXd& y, const Matri
     return result;
 }
 
-// calculate log det X'X
-double calc_logdetXpX(const MatrixXd& X)
-{
-    const MatrixXd XpX(calc_xpx(X)); // calc X'X
-    const int p = X.cols();
-
-    // eigen decomposition of X'X
-    const std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
-
-    // calculate log det X'X
-    double result = 0.0;
-    for (int i = 0; i < p; i++) result += log(e.first[i]);
-
-    return result;
-}
-
 // getMLsoln
 // for fixed value of hsq, calculate MLEs of beta and sigmasq
 // sigmasq = total variance = sig^2_g + sig^2_e
