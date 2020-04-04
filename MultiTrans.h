@@ -1,6 +1,5 @@
 #pragma once
-#ifndef ESTIMATEVARCOMP_H
-#define ESTIMATEVARCOMP_H
+
 #include "Eigen/Dense"
 #include "Eigen/Core"
 #include "Eigen/unsupported/Eigen/MatrixFunctions"
@@ -9,6 +8,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <vector>
+//#include "slide.h"
 
 using namespace Eigen;
 
@@ -20,6 +20,7 @@ void cal_cor(std::vector<double>& ret, Eigen::MatrixXd& mat, Eigen::MatrixXd& co
 
 Eigen::MatrixXd cor_mat(Eigen::MatrixXd kinship, Eigen::MatrixXd snp, std::vector<double> vc_1, std::vector<double> vc_2);
 Eigen::MatrixXd read_mat(std::ifstream& input_file, int row, int col);
+Eigen::MatrixXd corrband_mat(int windowSize, Eigen::MatrixXd cor_mat);
 Eigen::MatrixXd estimateKinship(Eigen::MatrixXd snp);
 void estimateVarComp(Eigen::MatrixXd kinship, Eigen::MatrixXd snp, Eigen::MatrixXd phenotype, std::vector<double>& vc_1, std::vector<double>& vc_2);
 struct lmm_fit {
@@ -109,4 +110,3 @@ struct lmm_fit fitLMM(const VectorXd& Kva, const VectorXd& y, const MatrixXd& X,
 double qtl2_Brent_fmin(double ax, double bx, double (*f)(double, void*),
     void* info, double tol);
 
-#endif // ESTIMATEVARCOMP_H

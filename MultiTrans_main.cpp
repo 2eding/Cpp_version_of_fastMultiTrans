@@ -1,11 +1,8 @@
-
 #include "MultiTrans.h"
 
 //#include <algorithm>
 
-
-
-int main() {
+int main(int argc, char** argv) {
 
     std::cout << "@----------------------------------------------------------@" << std::endl;
     std::cout << "|       MTVCP      |      v1.0      |      10/12/2019      |"<< std::endl;
@@ -17,19 +14,29 @@ int main() {
     std::cout << "@----------------------------------------------------------@" << std::endl;
 
     //add error handling
-    std::ifstream input_x("X.txt");
-    std::ifstream input_y("Y.txt");
-    std::ofstream output_c("result.txt");
+    std::ifstream input_x(argv[1]);
+    std::ifstream input_y(argv[2]);
+    int windowsize = std::atoi(argv[3]);
+    std::ofstream output_c(argv[4]);
     std::vector<double> vc_1;
     std::vector<double> vc_2;
+
+    if (argc != 5) {
+        std::cout << "This is test verison. Please input x, y, windowsize, outputpath" << std::endl;
+    }
 
     Eigen::MatrixXd X = read_mat(input_x, count_matrix_row(input_x), count_matrix_col(input_x));
     Eigen::MatrixXd Y = read_mat(input_y, count_matrix_row(input_y), count_matrix_col(input_y));
     Eigen::MatrixXd K = estimateKinship(X);
     estimateVarComp(K, X, Y, vc_1, vc_2); //calculate vc_1, vc_2
     Eigen::MatrixXd cor_matrix = cor_mat(K, X, vc_1, vc_2);
+    Eigen::MatrixXd cor_band_mat = corrband_mat(windowsize, cor_matrix);
     //std::cout << VC <<std::endl;
-    output_c << cor_matrix << std::endl;
+    output_c << cor_band_mat << std::endl;
+    /*slide_1prep(windowsize, "result2.txt", "./test2/prep");
+    slide_2run("./test2/prep", "./test2/maxstat");
+    slide_3sort("./test2/maxstat", "./test2/sorted");
+    slide_4correct("./test2/sorted", "./test2/mul.txt");*/
 
     vc_1.~vector();
     vc_2.~vector();
@@ -121,6 +128,16 @@ Eigen::MatrixXd cor_mat(Eigen::MatrixXd kinship, Eigen::MatrixXd snp, std::vecto
     stand_devi.~vector();
     unit_mat.resize(0, 0);
     return ret;
+}
+Eigen::MatrixXd corrband_mat(int windowSize, Eigen::MatrixXd cor_mat) {
+    Eigen::MatrixXd ret_mat(cor_mat.rows() - 1, windowSize);
+    ret_mat.setZero();
+    for (int i = 0; i < ret_mat.rows(); i++) {
+        for (int j = 0; j < i+1; j++) {
+            ret_mat(i, ret_mat.cols() - 1 + j - i) = cor_mat(i + 1, j);
+        }
+    }
+    return ret_mat;
 }
 
 int count_matrix_col(std::ifstream& matrix) {
