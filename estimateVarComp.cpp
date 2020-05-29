@@ -3,8 +3,9 @@
 #include <sstream>
 #include <string>
 #include <cstdlib>
-#define _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES 
 #include <math.h>
+#include <float.h>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "estimateVarComp.h"
@@ -25,7 +26,7 @@ int main() {
     int kin_mat_row(0), kin_mat_col(0);
     int phe_mat_row(0), phe_mat_col(0);
     int snp_mat_row(0), snp_mat_col(0);
-   
+
     kin_mat_row = count_matrix_row(kinin); kin_mat_col = count_matrix_col(kinin);
     phe_mat_row = count_matrix_row(phenoin); phe_mat_col = count_matrix_col(phenoin);
     snp_mat_row = count_matrix_row(snpin); snp_mat_col = count_matrix_col(snpin);
@@ -69,13 +70,15 @@ int main() {
         for (int i = 0; i < phe_mat_row; i++) {
             kin_mat = oriKin;
 
-            std::cout << i+1 << std::endl;
+            std::cout << i + 1 << std::endl;
 
             e = eigen_rotation(kin_mat, pheno_mat.row(i), snp_mat);
-            vc = fitLMM(e.Kva, e.y, e.X, true, true, NULL, 1e-6);
+            vc = fitLMM(e.Kva, e.y, e.X, true, true, 1e-6);
 
             // vc.hsq * vc.sigmasq = Vg
             // (1 - vc.hsq) * vc.sigmasq = Ve
+            std::cout << std::fixed;
+            std::cout.precision(5);
             std::cout << "Vg = " << vc.hsq * vc.sigmasq << "\t" << "Ve = " << (1 - vc.hsq) * vc.sigmasq << std::endl;
             out << vc.hsq * vc.sigmasq << "\t" << (1 - vc.hsq) * vc.sigmasq << "\n";
         }
@@ -95,7 +98,7 @@ int main() {
 MatrixXd calc_xpx(const MatrixXd& X)
 {
     const int n = X.cols();
-    return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(X.transpose().eval());
+    return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(X.transpose());
 }
 
 // eigen decomposition
@@ -103,7 +106,7 @@ MatrixXd calc_xpx(const MatrixXd& X)
 std::pair<VectorXd, MatrixXd> eigen_decomp(const MatrixXd& A)
 {
     const SelfAdjointEigenSolver<MatrixXd> VLV(A);
-    return std::make_pair(VLV.eigenvalues(), VLV.eigenvectors().transpose().eval());
+    return std::make_pair(VLV.eigenvalues(), VLV.eigenvectors().transpose());
 }
 
 // eigen + rotation
@@ -113,10 +116,10 @@ struct eigenrot eigen_rotation(const MatrixXd& K, const MatrixXd& y, const Matri
     const std::pair<VectorXd, MatrixXd> e = eigen_decomp(K);
     // e.first's matrix size: # of individual x 1
     // e.second's matrix size: # of individual x # of individual
-    const MatrixXd yrot = e.second * y.transpose().eval(); // y: 1 x individual
-    const MatrixXd XX = MatrixXd(K.rows(), 1);
+    const MatrixXd yrot = e.second * y.transpose(); // y: 1 x individual
+    const MatrixXd XX = MatrixXd::Ones(K.rows(), 1);
     const MatrixXd Xrot = e.second * XX; // X: snp x individual
-    
+
     struct eigenrot result;
     result.Kva = e.first;
     result.Kve = e.second;
@@ -170,7 +173,7 @@ struct lmm_fit getMLsoln(const double hsq, const VectorXd& Kva, const VectorXd& 
 
     // return value
     result.rss = rss(0, 0);
-    result.sigmasq = result.rss / (double)(n - p);
+    result.sigmasq = result.rss / (double(n) - double(p));
     result.beta = beta.col(0);
     result.logdetXSX = logdetXSX; // determinant (if REML)
 
@@ -188,7 +191,7 @@ struct lmm_fit getMLsoln(const double hsq, const VectorXd& Kva, const VectorXd& 
 // reml  = boolean indicating whether to use REML (vs ML)
 // logdetXpX = log det X'X; if NA, it's calculated
 struct lmm_fit calcLL(const double hsq, const VectorXd& Kva, const VectorXd& y,
-    const MatrixXd& X, const bool reml = true, const double logdetXpX = NULL)
+    const MatrixXd& X, const bool reml = true, const double logdetXpX = 0.0)
 {
     const int n = Kva.size();
     const int p = X.cols();
@@ -204,7 +207,7 @@ struct lmm_fit calcLL(const double hsq, const VectorXd& Kva, const VectorXd& y,
 
     if (reml) {
         double logdetXpX_val;
-        if (logdetXpX == NULL) { // need to calculate it
+        if (logdetXpX == 0.0) { // need to calculate it
             MatrixXd XpX(calc_xpx(X));
             std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
             logdetXpX_val = 0.0;
@@ -239,20 +242,18 @@ double negLL(const double x, struct calcLL_args* args)
 // logdetXpX = log det X'X; if NA, it's calculated
 // tol   = tolerance for convergence
 struct lmm_fit fitLMM(const VectorXd& Kva, const VectorXd& y, const MatrixXd& X, const bool reml = true, const bool check_boundary = true,
-    const double logdetXpX = NULL, const double tol = 1e-4) {
+    const double tol = 1e-4) {
     struct lmm_fit result;
 
     // calculate log det XpX, if necessary
     // (note same befor and after it's "rotated" by eigenvec of kinship matrix
     double logdetXpX_val;
-    if (reml && logdetXpX == NULL) {
-        MatrixXd XpX(calc_xpx(X));
-        std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
-        int p = X.cols();
-        logdetXpX_val = 0.0;
-        for (int i = 0; i < p; i++) logdetXpX_val += log(e.first[i]);
-    }
-    else logdetXpX_val = logdetXpX;
+
+    MatrixXd XpX(calc_xpx(X));
+    std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
+    int p = X.cols();
+    logdetXpX_val = 0.0;
+    for (int i = 0; i < p; i++) logdetXpX_val += log(e.first[i]);
 
     // function arguments for calcLL
     struct calcLL_args args;
