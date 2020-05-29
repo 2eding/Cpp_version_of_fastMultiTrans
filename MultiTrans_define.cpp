@@ -169,7 +169,7 @@ void cal_cor(std::vector<double>& ret, Eigen::MatrixXd& mat, Eigen::MatrixXd& co
 MatrixXd calc_xpx(const MatrixXd& X)
 {
     const int n = X.cols();
-    return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(X.transpose().eval());
+    return MatrixXd(n, n).setZero().selfadjointView<Lower>().rankUpdate(X.transpose());
 }
 
 // eigen decomposition
@@ -177,7 +177,7 @@ MatrixXd calc_xpx(const MatrixXd& X)
 std::pair<VectorXd, MatrixXd> eigen_decomp(const MatrixXd& A)
 {
     const SelfAdjointEigenSolver<MatrixXd> VLV(A);
-    return std::make_pair(VLV.eigenvalues(), VLV.eigenvectors().transpose().eval());
+    return std::make_pair(VLV.eigenvalues(), VLV.eigenvectors().transpose());
 }
 
 // eigen + rotation
@@ -187,8 +187,8 @@ struct eigenrot eigen_rotation(const MatrixXd& K, const MatrixXd& y, const Matri
     const std::pair<VectorXd, MatrixXd> e = eigen_decomp(K);
     // e.first's matrix size: # of individual x 1
     // e.second's matrix size: # of individual x # of individual
-    const MatrixXd yrot = e.second * y.transpose().eval(); // y: 1 x individual
-    const MatrixXd XX = MatrixXd(K.rows(), 1);
+    const MatrixXd yrot = e.second * y.transpose(); // y: 1 x individual
+    const MatrixXd XX = MatrixXd::Ones(K.rows(), 1);
     const MatrixXd Xrot = e.second * XX; // X: snp x individual
 
     struct eigenrot result;
@@ -196,22 +196,6 @@ struct eigenrot eigen_rotation(const MatrixXd& K, const MatrixXd& y, const Matri
     result.Kve = e.second;
     result.y = yrot;
     result.X = Xrot;
-
-    return result;
-}
-
-// calculate log det X'X
-double calc_logdetXpX(const MatrixXd& X)
-{
-    const MatrixXd XpX(calc_xpx(X)); // calc X'X
-    const int p = X.cols();
-
-    // eigen decomposition of X'X
-    const std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
-
-    // calculate log det X'X
-    double result = 0.0;
-    for (int i = 0; i < p; i++) result += log(e.first[i]);
 
     return result;
 }
@@ -260,7 +244,7 @@ struct lmm_fit getMLsoln(const double hsq, const VectorXd& Kva, const VectorXd& 
 
     // return value
     result.rss = rss(0, 0);
-    result.sigmasq = result.rss / (double)(n - p);
+    result.sigmasq = result.rss / (double(n) - double(p));
     result.beta = beta.col(0);
     result.logdetXSX = logdetXSX; // determinant (if REML)
 
@@ -278,7 +262,7 @@ struct lmm_fit getMLsoln(const double hsq, const VectorXd& Kva, const VectorXd& 
 // reml  = boolean indicating whether to use REML (vs ML)
 // logdetXpX = log det X'X; if NA, it's calculated
 struct lmm_fit calcLL(const double hsq, const VectorXd& Kva, const VectorXd& y,
-    const MatrixXd& X, const bool reml = true, const double logdetXpX = NULL)
+    const MatrixXd& X, const bool reml = true, const double logdetXpX = 0.0)
 {
     const int n = Kva.size();
     const int p = X.cols();
@@ -294,7 +278,7 @@ struct lmm_fit calcLL(const double hsq, const VectorXd& Kva, const VectorXd& y,
 
     if (reml) {
         double logdetXpX_val;
-        if (logdetXpX == NULL) { // need to calculate it
+        if (logdetXpX == 0.0) { // need to calculate it
             MatrixXd XpX(calc_xpx(X));
             std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
             logdetXpX_val = 0.0;
@@ -328,20 +312,19 @@ double negLL(const double x, struct calcLL_args* args)
 // check_boundary = if true, explicity check 0.0 and 1.0 boundaries
 // logdetXpX = log det X'X; if NA, it's calculated
 // tol   = tolerance for convergence
-struct lmm_fit fitLMM(const VectorXd& Kva, const VectorXd& y, const MatrixXd& X, const bool reml = true, const bool check_boundary = true, const double logdetXpX = NULL, const double tol = 1e-4) {
+struct lmm_fit fitLMM(const VectorXd& Kva, const VectorXd& y, const MatrixXd& X, const bool reml = true, const bool check_boundary = true,
+    const double tol = 1e-4) {
     struct lmm_fit result;
 
     // calculate log det XpX, if necessary
     // (note same befor and after it's "rotated" by eigenvec of kinship matrix
     double logdetXpX_val;
-    if (reml && logdetXpX == NULL) {
-        MatrixXd XpX(calc_xpx(X));
-        std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
-        int p = X.cols();
-        logdetXpX_val = 0.0;
-        for (int i = 0; i < p; i++) logdetXpX_val += log(e.first[i]);
-    }
-    else logdetXpX_val = logdetXpX;
+
+    MatrixXd XpX(calc_xpx(X));
+    std::pair<VectorXd, MatrixXd> e = eigen_decomp(XpX);
+    int p = X.cols();
+    logdetXpX_val = 0.0;
+    for (int i = 0; i < p; i++) logdetXpX_val += log(e.first[i]);
 
     // function arguments for calcLL
     struct calcLL_args args;
@@ -371,7 +354,9 @@ struct lmm_fit fitLMM(const VectorXd& Kva, const VectorXd& y, const MatrixXd& X,
 
     return result;
 }
-double qtl2_Brent_fmin(double ax, double bx, double (*f)(double, void*), void* info, double tol)
+
+double qtl2_Brent_fmin(double ax, double bx, double (*f)(double, void*),
+    void* info, double tol)
 {
     /*  c is the squared inverse of the golden ratio */
     const double c = (3. - sqrt(5.)) * .5;
