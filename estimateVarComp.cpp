@@ -6,6 +6,7 @@
 #define _USE_MATH_DEFINES 
 #include <math.h>
 #include <float.h>
+#include <omp.h>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 #include "estimateVarComp.h"
@@ -67,6 +68,7 @@ int main() {
         MatrixXd oriKin = kin_mat;
         struct eigenrot e;
         struct lmm_fit vc;
+        #pragma omp parallel for
         for (int i = 0; i < phe_mat_row; i++) {
             kin_mat = oriKin;
 
