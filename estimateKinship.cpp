@@ -10,7 +10,6 @@
 
 void estimateKinship(std::string SNP);
 Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W);
-//Eigen::MatrixXd normalizeGenotype(Eigen::MatrixXd G);
 int count_matrix_col(std::ifstream& matrix);
 int count_matrix_row(std::ifstream& matrix);
 
@@ -23,14 +22,14 @@ int main() {
     std::cout << "|				https://github.com/2eding/MTVCP				|" << std::endl;
     std::cout << "@----------------------------------------------------------@" << std::endl;
 
-    estimateKinship("X_bmi.txt");
+    estimateKinship("X2.txt");
 
     return 0;
 }
 
 void estimateKinship(std::string SNP) {
-    std::ifstream in("X_bmi.txt"); // input SNP file
-    std::ofstream out("K_bmi.txt"); // output kinship file
+    std::ifstream in("X2.txt"); // input SNP file
+    std::ofstream out("K22.txt"); // output kinship file
     std::string read_buffer; // SNP read buffer
     std::string token;
     std::stringstream stream;
@@ -40,16 +39,6 @@ void estimateKinship(std::string SNP) {
     int snp_mat_row = count_matrix_row(in);
     int snp_mat_col = count_matrix_col(in);
     Eigen::MatrixXd X = Eigen::MatrixXd(snp_mat_row, snp_mat_col);
-    
-    for (int i = 0; i < snp_mat_row; i++) { //row
-        std::getline(in, read_buffer);
-        stream.str(read_buffer);
-        for (int j = 0; j < snp_mat_col; j++) { //col
-            stream >> token;
-            X(i, j) = std::stold(token);
-        }
-        stream.clear();
-    }
 
     int n = snp_mat_col;
     int m = 1000;
@@ -61,8 +50,17 @@ void estimateKinship(std::string SNP) {
     while (i < snp_mat_row) {
         int j = 0;
         while ((j < m) && (i < snp_mat_row)) {
+    
+            std::getline(in, read_buffer);
+            stream.str(read_buffer);
+            for (int k = 0; k < snp_mat_col; k++) {
+                stream >> token;
+                X(i, k) = std::stold(token);
+            }
+
             double mean = X.row(i).mean();
             double snp_var = X.row(i).squaredNorm() - (mean * mean);
+            stream.clear();
             if (snp_var == 0) {
                 i += 1;
                 continue;
