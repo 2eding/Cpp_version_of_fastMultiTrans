@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <math.h>
 #include <ctime>
+#include <omp.h>
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
@@ -121,6 +122,7 @@ Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W) {
     Eigen::MatrixXd kinship = Eigen::MatrixXd(m, m);
 
     // Standardization
+    #pragma omp parallel for
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
             W(j, i) = (W(j, i) - matrixMean.col(i).value()) / matrixStd.col(i).value();
