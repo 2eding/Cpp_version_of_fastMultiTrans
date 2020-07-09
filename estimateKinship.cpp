@@ -4,11 +4,13 @@
 #include <string>
 #include <cstdlib>
 #include <math.h>
+#include <ctime>
 #include <Eigen/Dense>
-
-using namespace Eigen;
+#include <Eigen/Core>
 
 void estimateKinship(std::string SNP);
+Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W);
+//Eigen::MatrixXd normalizeGenotype(Eigen::MatrixXd G);
 int count_matrix_col(std::ifstream& matrix);
 int count_matrix_row(std::ifstream& matrix);
 
@@ -21,49 +23,104 @@ int main() {
     std::cout << "|				https://github.com/2eding/MTVCP				|" << std::endl;
     std::cout << "@----------------------------------------------------------@" << std::endl;
 
-    estimateKinship("X.txt");
+    estimateKinship("X_bmi.txt");
 
     return 0;
 }
+
 void estimateKinship(std::string SNP) {
-    std::ifstream in("X.txt"); // input SNP file
-    std::ofstream out("K.txt"); // output kinship file
+    std::ifstream in("X_bmi.txt"); // input SNP file
+    std::ofstream out("K_bmi.txt"); // output kinship file
     std::string read_buffer; // SNP read buffer
     std::string token;
     std::stringstream stream;
 
+    std::clock_t start = std::clock();
+
     int snp_mat_row = count_matrix_row(in);
     int snp_mat_col = count_matrix_col(in);
-
-    MatrixXd W = MatrixXd(snp_mat_row, snp_mat_col);
-    MatrixXd K = MatrixXd(snp_mat_col, snp_mat_col);
-
+    Eigen::MatrixXd X = Eigen::MatrixXd(snp_mat_row, snp_mat_col);
+    
     for (int i = 0; i < snp_mat_row; i++) { //row
         std::getline(in, read_buffer);
         stream.str(read_buffer);
         for (int j = 0; j < snp_mat_col; j++) { //col
             stream >> token;
-            W(i, j) = std::stold(token);
+            X(i, j) = std::stold(token);
         }
         stream.clear();
     }
 
+    int n = snp_mat_col;
+    int m = 1000;
+    Eigen::MatrixXd W = Eigen::MatrixXd(n, m).setOnes() * NAN;
+
+    int i = 0;
+    Eigen::MatrixXd kinship = Eigen::MatrixXd(n, n).setZero();
+    Eigen::MatrixXd kinship_j = Eigen::MatrixXd(n, n);
+    while (i < snp_mat_row) {
+        int j = 0;
+        while ((j < m) && (i < snp_mat_row)) {
+            double mean = X.row(i).mean();
+            double snp_var = X.row(i).squaredNorm() - (mean * mean);
+            if (snp_var == 0) {
+                i += 1;
+                continue;
+            }
+
+            W.col(j) = X.row(i).transpose();
+
+            i += 1;
+            j += 1;
+
+        }
+
+        if (j < m) {
+            Eigen::MatrixXd W2 = Eigen::MatrixXd(n, j);
+            for (int x = 0; x < n; x++) {
+                for (int y = 0; y < j; y++) {
+                    W2(x, y) = W(x, y);
+                }
+            }
+            W.resize(n, j);
+            W = W2;
+        }
+
+        std::cout << "Processing first " << i << " SNPs" << std::endl;
+        
+        if (kinship.isZero()) {
+            kinship = calculateKinship(W.transpose()) * j;
+        }
+        else {
+            kinship_j = calculateKinship(W.transpose()) * j;
+            kinship = kinship + kinship_j;
+        }
+    }
+    kinship = kinship / float(snp_mat_row);
+    double duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+    std::cout << "running time = " << duration << " secs\n";
+    out << kinship << "\n";
+
+    in.close();
+}
+
+Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W) {
     W = W.transpose().eval();
     int n = W.rows();
     int m = W.cols();
-
+    
     // Calculate mean
-    RowVectorXd mean = W.colwise().mean();
-    MatrixXd matrixMean = mean;
+    Eigen::RowVectorXd mean = W.colwise().mean();
+    Eigen::MatrixXd matrixMean = mean;
 
     // Calculate variance
-    RowVectorXd var = (W.rowwise() - mean).array().square().colwise().mean();
-    MatrixXd matrixVar = var;
+    Eigen::RowVectorXd var = (W.rowwise() - mean).array().square().colwise().mean();
+    Eigen::MatrixXd matrixVar = var;
 
     // Calculate standardDeviation
-    MatrixXd matrixStd = matrixVar.array().sqrt();
-    
-    MatrixXd kinship = MatrixXd(m, m);
+    Eigen::MatrixXd matrixStd = matrixVar.array().sqrt();
+
+    Eigen::MatrixXd kinship = Eigen::MatrixXd(m, m);
 
     // Standardization
     for (int i = 0; i < m; i++) {
@@ -74,11 +131,9 @@ void estimateKinship(std::string SNP) {
 
     // Estimate kinship
     // X * X^T / n
-    kinship = W * W.transpose().eval() * 1.0 / m;
+    kinship = W * W.transpose().eval() * 1.0 / float(m);
 
-    out << kinship << "\n";
-
-    in.close();
+    return kinship;
 }
 
 int count_matrix_col(std::ifstream& matrix) {
