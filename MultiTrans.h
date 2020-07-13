@@ -5,7 +5,7 @@
 #include "Eigen/unsupported/Eigen/MatrixFunctions"
 #include <iostream>
 #include <fstream>
-
+#include <omp.h>
 #define _USE_MATH_DEFINES
 
 #include <math.h>
