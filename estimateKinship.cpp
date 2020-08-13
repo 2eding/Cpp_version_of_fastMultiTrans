@@ -9,7 +9,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Core>
 
-void estimateKinship(std::string SNP);
+void estimateKinship(std::string SNP, int num_threads);
 Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W, int num_threads);
 int count_matrix_col(std::ifstream& matrix);
 int count_matrix_row(std::ifstream& matrix);
@@ -23,12 +23,12 @@ int main() {
     std::cout << "|				https://github.com/2eding/MTVCP				|" << std::endl;
     std::cout << "@----------------------------------------------------------@" << std::endl;
 
-    estimateKinship("X2.txt");
+    estimateKinship("X2.txt", 20);
 
     return 0;
 }
 
-void estimateKinship(std::string SNP) {
+void estimateKinship(std::string SNP, int num_threads) {
     std::ifstream in("X2.txt"); // input SNP file
     std::ofstream out("K22.txt"); // output kinship file
     std::string read_buffer; // SNP read buffer
@@ -88,10 +88,10 @@ void estimateKinship(std::string SNP) {
         std::cout << "Processing first " << i << " SNPs" << std::endl;
         
         if (kinship.isZero()) {
-            kinship = calculateKinship(W.transpose(), 20) * j;
+            kinship = calculateKinship(W.transpose(), num_threads) * j;
         }
         else {
-            kinship_j = calculateKinship(W.transpose(), 20) * j;
+            kinship_j = calculateKinship(W.transpose(), num_threads) * j;
             kinship = kinship + kinship_j;
         }
     }
