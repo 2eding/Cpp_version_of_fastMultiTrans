@@ -10,7 +10,7 @@
 #include <Eigen/Core>
 
 void estimateKinship(std::string SNP);
-Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W);
+Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W, int num_threads);
 int count_matrix_col(std::ifstream& matrix);
 int count_matrix_row(std::ifstream& matrix);
 
@@ -88,10 +88,10 @@ void estimateKinship(std::string SNP) {
         std::cout << "Processing first " << i << " SNPs" << std::endl;
         
         if (kinship.isZero()) {
-            kinship = calculateKinship(W.transpose()) * j;
+            kinship = calculateKinship(W.transpose(), 20) * j;
         }
         else {
-            kinship_j = calculateKinship(W.transpose()) * j;
+            kinship_j = calculateKinship(W.transpose(), 20) * j;
             kinship = kinship + kinship_j;
         }
     }
@@ -103,7 +103,7 @@ void estimateKinship(std::string SNP) {
     in.close();
 }
 
-Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W) {
+Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W, int num_threads) {
     W = W.transpose().eval();
     int n = W.rows();
     int m = W.cols();
@@ -122,6 +122,7 @@ Eigen::MatrixXd calculateKinship(Eigen::MatrixXd W) {
     Eigen::MatrixXd kinship = Eigen::MatrixXd(m, m);
 
     // Standardization
+    omp_set_num_threads(num_threads);
     #pragma omp parallel for
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
