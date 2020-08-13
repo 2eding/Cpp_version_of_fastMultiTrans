@@ -64,10 +64,12 @@ int main() {
         stream.clear();
     }
 
+    int num_threads = 20;
     if (true) {
         MatrixXd oriKin = kin_mat;
         struct eigenrot e;
         struct lmm_fit vc;
+        omp_set_num_threads(num_threads);
         #pragma omp parallel for
         for (int i = 0; i < phe_mat_row; i++) {
             kin_mat = oriKin;
