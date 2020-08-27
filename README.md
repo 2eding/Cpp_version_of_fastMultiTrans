@@ -1,5 +1,5 @@
 # Cpp_version_of_fastMultiTrans
-C++ version of MultiTrans
+C++ version of MultiTrans (http://genetics.cs.ucla.edu/multiTrans/)
 
 # Prerequistes for running Source Code
 (suggest using Linux environment)
