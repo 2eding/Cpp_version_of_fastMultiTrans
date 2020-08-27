@@ -6,7 +6,9 @@ C++ version of MultiTrans
 
 #Basic instructions
 ```
-g++ -std=c++11 -I/home/fastMultiTrans/Eigen MultiTrans_main.cpp MultiTrans_define.cpp -fopenmp -o fastMultiTrans
-chmod 755 fastMultiTrans
-./fastMultiTrans genotypeData, PhenotypeData, corrbandmatrix_outputpath, correlation_output_path, windowsize
+1. g++ -std=c++11 -I/home/fastMultiTrans/Eigen MultiTrans_main.cpp MultiTrans_define.cpp -fopenmp -o fastMultiTrans
+
+2. chmod 755 fastMultiTrans
+
+3. ./fastMultiTrans genotypeData, PhenotypeData, corrbandmatrix_outputpath, correlation_output_path, windowsize
 ```
